@@ -3,6 +3,8 @@ import sys
 import os
 import time
 import argparse
+import json
+import zipfile
 
 import torch
 import torch.nn as nn
@@ -14,20 +16,15 @@ from skimage import io
 import numpy as np
 from shapely.geometry import Polygon
 
-import craft_utils
-import imgproc
-import file_utils
-import json
-import zipfile
-from craft import CRAFT
-from drugs_side_effect.crnn.models import crnn
-from drugs_side_effect.crnn import utils, dataset
+from craft_text_detection import craft_utils
+from craft_text_detection import imgproc
+from craft_text_detection import file_utils
+from craft_text_detection.craft import CRAFT
+from crnn.models import crnn
+from crnn import utils, dataset
 from collections import OrderedDict
-from drugs_side_effect.common_service.constants import TRAINED_MODEL, TEXT_THRESHOLD, LOW_TEXT,LINK_THRESHOLD, 
-                                                        CUDA, CANVAS_SIZE, MAG_RATIO, 
-                                                        POLY, SHOW_TIME, TEST_FORDEL, REFINE,
-                                                        REFINER_MODEL, MODEL_PATH_CRNN, ALPHABET
-import crnn.models.rcnn as crnn
+from common_service.constants import *
+from crnn.models import crnn
 
 
 def calculate_area(bbox):
@@ -75,9 +72,6 @@ def test_net(net, image, text_threshold, link_threshold, low_text, cuda, poly, r
         y_refiner = refine_net(y, feature)
         score_link = y_refiner[0,:,:,0].cpu().data.numpy()
 
-    t0 = time.time() - t0
-    t1 = time.time()
-
     # Post-processing
     boxes, polys = craft_utils.getDetBoxes(score_text, score_link, text_threshold, link_threshold, low_text, poly)
 
@@ -95,7 +89,7 @@ def test_net(net, image, text_threshold, link_threshold, low_text, cuda, poly, r
     return boxes, polys, ret_score_text
 
 
-def text_detection_service(image_list, cuda= False):
+def text_detection_service(image_list, cuda=False):
     # load net
     net = CRAFT()
 
@@ -113,11 +107,12 @@ def text_detection_service(image_list, cuda= False):
 
     # LinkRefiner
     refine_net = None
+    POLY = False
     if REFINE:
         from refinenet import RefineNet
         refine_net = RefineNet()
 
-        if CUDA:
+        if cuda:
             refine_net.load_state_dict(copyStateDict(torch.load(REFINER_MODEL)))
             refine_net = refine_net.cuda()
             refine_net = torch.nn.DataParallel(refine_net)
@@ -128,7 +123,7 @@ def text_detection_service(image_list, cuda= False):
         POLY = True
 
     for k, image in enumerate(image_list):
-        bboxes, polys, score_text = test_net(net, image, TEXT_THRESHOLD, LINK_THRESHOLD, LOW_TEXT, CUDA, POLY, refine_net)
+        bboxes, polys, score_text = test_net(net, image, TEXT_THRESHOLD, LINK_THRESHOLD, LOW_TEXT, cuda, POLY, refine_net)
         max_area_index = [0, 0]
         max_area = [0, 0]
 
@@ -161,7 +156,8 @@ def text_detection_service(image_list, cuda= False):
         return area_crops
 
 
-def get_text_service(area_crop):
+def get_text_service(image):
+    image = Image.fromarray(image).convert('L')
     model = crnn.CRNN(32, 1, 37, 256)
     if torch.cuda.is_available():
         model = model.cuda()
