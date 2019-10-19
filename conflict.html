@@ -8,6 +8,8 @@
          let elem = document.getElementById('output');
          let drugs = [];
          let files = [];
+         // vỉ thuốc là 1, đơn thuốc là 0
+         let imgtype = [];
          let value = "";
          for (let e of form.elements) {
             if (e.tagName === "INPUT") {
@@ -19,6 +21,7 @@
                if (e.type === "file") {
                   value = e.value;
                   if (e.value !== "")
+                     imgtype.push(e.nextElementSibling.classList.contains("actual-pill"));
                      files.push(value);
                }
             }
@@ -30,7 +33,7 @@
          elem.innerHTML += "các ảnh đã được nhập:<ul>";
          for (value of files)
             elem.innerHTML += ("<li>"+value+"</li>");
-         elem.innerHTML += "</ul>"
+         elem.innerHTML += "</ul>";
       }
       function on_hover() {
          let elems = document.getElementsByClassName('selected');
@@ -208,6 +211,10 @@
       background-color: #eeeeee;
    }
    
+   table {
+      width: 100%;
+   }
+
    th, td {
       padding: 10px;
       border-top: 1px solid #ccc;
@@ -252,6 +259,15 @@
    .color-unknown {
       color: #484848;
    }
+
+   #image-entry {
+      padding-right: 20px;
+      border-right: 1px solid #ccc;
+   }
+
+   #text-entry {
+      padding-left: 20px;
+   }
 </style>
 
 <html>
@@ -289,7 +305,7 @@
             </div>
 
             <div id="text-entry" class="col-md-6">
-               <div class="row">... hoặc nhập tên thuốc:</div>
+               <div class="row" style="padding-left:20px">...hoặc nhập tên thuốc:</div>
                <div class="row" style="margin: 1em 0em;">
                   <input type="text" class="form-control col-md" name="drug_name" placeholder="nhập tên thuốc vào đây." autofocus>
                   <button type="button" class="btn col-md-auto" style="margin-left:1em;" onclick="add_row(this, 'text-entry')">+</button>
