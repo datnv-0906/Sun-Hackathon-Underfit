@@ -8,33 +8,30 @@ import torch
 import torch.nn as nn
 import torch.backends.cudnn as cudnn
 from torch.autograd import Variable
-
 from PIL import Image
-
 import cv2
 from skimage import io
 import numpy as np
+from shapely.geometry import Polygon
+
 import craft_utils
 import imgproc
 import file_utils
 import json
 import zipfile
-from shapely.geometry import Polygon
-
 from craft import CRAFT
 from drugs_side_effect.crnn.models import crnn
 from drugs_side_effect.crnn import utils, dataset
-
 from collections import OrderedDict
-from drugs_side_effect.common_service.constants import TRAINED_MODEL, TEXT_THRESHOLD, LOW_TEXT
-                                                        LINK_THRESHOLD, CUDA, CANVAS_SIZE, MAG_RATIO
+from drugs_side_effect.common_service.constants import TRAINED_MODEL, TEXT_THRESHOLD, LOW_TEXT,LINK_THRESHOLD, 
+                                                        CUDA, CANVAS_SIZE, MAG_RATIO, 
                                                         POLY, SHOW_TIME, TEST_FORDEL, REFINE,
                                                         REFINER_MODEL, MODEL_PATH_CRNN, ALPHABET
+import crnn.models.rcnn as crnn
 
 
 def calculate_area(bbox):
     polygon = Polygon(bbox)
-    
     return polygon.area
 
 
@@ -55,8 +52,6 @@ def str2bool(v):
 
 
 def test_net(net, image, text_threshold, link_threshold, low_text, cuda, poly, refine_net=None):
-    # t0 = time.time()
-
     # resize
     img_resized, target_ratio, size_heatmap = imgproc.resize_aspect_ratio(image, CANVAS_SIZE, interpolation=cv2.INTER_LINEAR, mag_ratio=MAG_RATIO)
     ratio_h = ratio_w = 1 / target_ratio
@@ -91,8 +86,6 @@ def test_net(net, image, text_threshold, link_threshold, low_text, cuda, poly, r
     polys = craft_utils.adjustResultCoordinates(polys, ratio_w, ratio_h)
     for k in range(len(polys)):
         if polys[k] is None: polys[k] = boxes[k]
-
-    # t1 = time.time() - t1
 
     # render results (optional)
     render_img = score_text.copy()
@@ -136,11 +129,12 @@ def text_detection_service(image_list, cuda= False):
 
     for k, image in enumerate(image_list):
         bboxes, polys, score_text = test_net(net, image, TEXT_THRESHOLD, LINK_THRESHOLD, LOW_TEXT, CUDA, POLY, refine_net)
-
         max_area_index = [0, 0]
         max_area = [0, 0]
+
         for i in range(len(bboxes)):
             area = calculate_area(bboxes[i])
+
             if area >= max_area[0]:
                 go_between = max_area_index[0]
                 max_area_index[0] = i
@@ -163,17 +157,15 @@ def text_detection_service(image_list, cuda= False):
             y2 = y + h + 5
             x1 = x - 5 if x >=5 else 0
             x2 = x + w + 5
-
             area_crops.append(image[int(y1):int(y2), int(x1):int(x2)])
-        
         return area_crops
 
 
-def get_text_service(area_crops):
+def get_text_service(area_crop):
     model = crnn.CRNN(32, 1, 37, 256)
     if torch.cuda.is_available():
         model = model.cuda()
-    
+
     model.load_state_dict(torch.load(MODEL_PATH_CRNN))
     converter = utils.strLabelConverter(ALPHABET)
     transformer = dataset.resizeNormalize((100, 32))
