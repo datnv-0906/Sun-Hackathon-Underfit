@@ -12,3 +12,6 @@ REFINE = False
 REFINER_MODEL = "weights/craft_refiner_CTW1500.pth"
 MODEL_PATH_CRNN = "crnn/data/crnn.pth"
 ALPHABET = "0123456789abcdefghijklmnopqrstuvwxyz"
+TESERACT_CONFIG = ('-l vie --oem 1 --psm 3')
+PATH_FILE_FULL = "static/csv/full_drug_info.csv"
+PATH_FILE_ELEMENT = "static/csv/drug_elements.csv"

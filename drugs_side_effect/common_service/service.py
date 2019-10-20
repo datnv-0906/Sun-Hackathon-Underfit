@@ -15,6 +15,9 @@ import cv2
 from skimage import io
 import numpy as np
 from shapely.geometry import Polygon
+import pandas as pd
+from bs4 import BeautifulSoup
+import requests
 
 from craft_text_detection import craft_utils
 from craft_text_detection import imgproc
@@ -179,3 +182,68 @@ def get_text_service(image):
     sim_pred = converter.decode(preds.data, preds_size.data, raw=False)
     
     return sim_pred
+
+
+def get_side_effect(drug_name):
+    drug_datas = pd.read_csv("static/csv/full_drug_info.csv")
+    filter_elements = drug_datas[drug_datas["drug_name"].isin([drug_name])]
+    side_effect_array = filter_elements["side_effect"].values
+
+    return side_effect_array
+
+
+def drug_elements(drug_name, path_file_full=PATH_FILE_FULL):
+    drug_datas = pd.read_csv(path_file_full)
+    filter_drugs = drug_datas.loc[(drug_datas["drug_name"] == drug_name.lower())]
+    # import pdb; pdb.set_trace()
+    # print(drug_datas.loc[(drug_datas["drug_name"] == drug_name)])
+
+    # print(filter_drugs["drug_elements"])
+    drug_elements_array = filter_drugs["drug_elements"].str.lower().values
+
+    return drug_elements_array
+
+
+def find_id_drugs_by_element(drug_element, path_file=PATH_FILE_ELEMENT):
+    element_datas = pd.read_csv(path_file)
+    # print(element_datas.shape)
+    # import pdb; pdb.set_trace()
+    filter_elements = element_datas.loc[(element_datas["drug_name"] == drug_element.capitalize())]
+    # print(filter_elements["drug_name"])
+    drugs_id_array = filter_elements["drug_id"].values[0]
+
+    return drugs_id_array
+
+
+def drug_interactions(drugs_id_array):
+    inter_url = 'https://www.drugs.com/interactions-check.php?drug_list={}'.format(drugs_id_array)
+    inter_r = requests.get(inter_url)
+    inter_soup = BeautifulSoup(inter_r.text, 'html.parser')
+    inter_between = inter_soup.find_all('div', 'interactions-reference')
+    res_data = []
+    for div in inter_between:
+        interact_info = {}
+        interact_info['level'] = div.find('span', 'ddc-status-label').text
+        interact_info['title'] = div.find('h3').text.replace('  ', ' vs ')
+        interact_info['apply'] = div.find('h3').findNext('p').text.split('Applies to:')[-1]
+        interact_info['content'] = div.find('div', 'interactions-reference-header').findNext('p').findNext('p').text.replace('  ', ' ')
+        res_data.append(interact_info)
+
+    return res_data
+
+
+def find_interaction(drug_names):
+    for drug_name in drug_names:
+        drug_elements_array = drug_elements(drug_name)
+        drug_elements_array = ["Abacavir", "Abenol", "Adapalene", "Adagen"]
+        drug_ids_array = []
+        for drug_element_array in drug_elements_array:
+            drug_id_array = find_id_drugs_by_element(drug_element_array)
+            drug_ids_array.append(drug_id_array)
+
+        drug_ids_array = np.array(drug_ids_array).flatten()
+        drug_ids_array = list(set(drug_ids_array))
+        drug_ids_array = np.array(drug_ids_array)
+        interactions = drug_interactions("2-0,3557-0")
+
+        return interactions
