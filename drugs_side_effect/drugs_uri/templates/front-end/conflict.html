@@ -144,7 +144,7 @@
                   <button type="button" class="btn-primary col-md-6" onclick="pic_choose(this)">Chọn ảnh tải lên</button>
                   <input type="file" style="display:none" accept="image/*" onchange="upload_to_cancel(this)"/>
 
-                  <button type="button" class="btn-secondary col-md prescription" onclick="toggle_type(this)" style="margin-left:1em">Đơn thuốc</button>
+                  <button type="button" class="btn-secondary col-md input-img-type prescription" value="prescription" onclick="toggle_type(this)" style="margin-left:1em">Đơn thuốc</button>
 
                   <button type="button" class="btn col-md-auto" style="margin-left:1em;" onclick="add_row(this, 'image-entry')">+</button>
                </div>
@@ -225,18 +225,19 @@
             }
          }
          
-         elem.innerHTML = "các thuốc đã được nhập:<ul>";
+         /* elem.innerHTML = "các thuốc đã được nhập:<ul>";
          for (value of drugs)
             elem.innerHTML += ("<li>"+value+"</li>");
          elem.innerHTML += "</ul><br>"
          elem.innerHTML += "các ảnh đã được nhập:<ul>";
          for (value of files)
             elem.innerHTML += ("<li>"+value+"</li>");
-         elem.innerHTML += "</ul>"
+         elem.innerHTML += "</ul>" */
 
          var formData = new FormData();
          formData.append('drugs', drugs);
          formData.append('files', $('input[type=file]')[0].files[0]);
+         formData.append('img_type', $('.input-img-type').val());
          formData.append('csrfmiddlewaretoken', csrfToken);
 
          $.ajax({
@@ -246,7 +247,7 @@
             contentType: false,
             processData: false,
             success: function(response) {
-               console.log(response)
+               $('#output').html(response.interactions[0].content);
             },
             error: function(error) {
                console.log(error)
@@ -322,12 +323,14 @@
          if (elem.classList.contains("prescription")) {
             elem.classList.remove("prescription");
             elem.classList.add("actual-pill");
-            elem.innerText = "Vỉ/viên thuốc"
+            elem.innerText = "Vỉ/viên thuốc";
+            elem.value = "actual-pill";
          }
          else {
             elem.classList.add("prescription");
             elem.classList.remove("actual-pill");
-            elem.innerText = "Đơn thuốc"
+            elem.innerText = "Đơn thuốc";
+            elem.value = "prescription";
          }
       }
 
